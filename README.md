@@ -1,8 +1,8 @@
-# QAP Solver: Silicon Spire Cleanroom Optimizer 🏭
+# QAP Solver: Silicon Spire Cleanroom Optimizer 
 
 A high-performance C++ command-line tool implementing a hybrid metaheuristic algorithm (Grey Wolf Optimizer + Tabu Search) to solve the Quadratic Assignment Problem (QAP), specifically designed for the Silicon Spire semiconductor fabrication plant layout optimization challenge.
 
-## Installation & Usage 🚀
+## Installation & Usage 
 
 ### Prerequisites
 - C++17 compatible compiler (g++, clang++)
@@ -49,23 +49,19 @@ Options:
 
 ### The Silicon Spire Challenge
 
-**Silicon Spire Dynamics** is constructing a cutting-edge semiconductor fabrication plant with a critical cleanroom layout decision. The company must optimally assign **six processing modules** to **six cleanroom bays** to minimize wafer pod transportation costs and maximize production efficiency.
+**Silicon Spire Dynamics** is designing a semiconductor fabrication cleanroom layout. The company must optimally assign **four processing modules** to **four cleanroom bays** to minimize wafer pod transportation costs and maximize production efficiency.
 
 #### Processing Modules:
 1. **Photolithography Bay**
 2. **Etching & Cleaning Station**
 3. **Deposition Chamber**
 4. **Metrology & Inspection Hub**
-5. **Ion Implantation Unit**
-6. **Wafer Test & Sort Area**
 
 #### Available Locations:
 - **Bay Alpha**
 - **Bay Beta**
 - **Bay Gamma**
 - **Bay Delta**
-- **Bay Epsilon**
-- **Bay Zeta**
 
 #### Optimization Objective:
 Minimize the total cost function: **Σᵢ Σⱼ (flow[i][j] × distance[location[i]][location[j]])**
@@ -73,20 +69,39 @@ Minimize the total cost function: **Σᵢ Σⱼ (flow[i][j] × distance[location
 Where:
 - `flow[i][j]` = Wafer pods per hour flowing between facilities i and j
 - `distance[x][y]` = Physical distance in meters between bays x and y
-- The goal is to place high-traffic facility pairs close together.
 
-### Solution for the 6x6 Silicon Spire Problem
+### Default 4×4 Test Case (silicon_spire.txt)
 
-✅ **OPTIMAL SOLUTION FOUND**: The tool consistently finds the proven optimal solution for the new 6x6 problem.
+The repository's default test case (`silicon_spire.txt`) now contains a 4×4 QAP instance with the following matrices:
 
-- **Best cost**: **41,490** (verified by exhaustive search of all 720 permutations)
-- **Optimal assignment**:
-  - Photolithography Bay → Bay Delta
+Distance matrix (meters):
+```
+0 10 15 20
+10 0 35 25
+15 35 0 30
+20 25 30 0
+```
+
+Flow matrix (pods/hour):
+```
+0 90 120 80
+90 0 40 50
+120 40 0 70
+80 50 70 0
+```
+
+### Verified Optimal Solution for the 4×4 Case
+
+I ran the solver and then exhaustively checked all 24 permutations to verify optimality. The solver consistently found the global optimum.
+
+- **Optimal cost:** **17,600**
+- **Optimal permutation (facility -> bay indices):** `(0, 2, 1, 3)`
+  - Photolithography Bay → Bay Alpha
   - Etching & Cleaning Station → Bay Gamma
-  - Deposition Chamber → Bay Alpha
-  - Metrology & Inspection Hub → Bay Zeta
-  - Ion Implantation Unit → Bay Beta
-  - Wafer Test & Sort Area → Bay Epsilon
+  - Deposition Chamber → Bay Beta
+  - Metrology & Inspection Hub → Bay Delta
+
+This result was verified by an exhaustive search of all 24 permutations and is included in the README as the canonical default test-case result.
 
 ## Algorithm Overview 🐺
 
