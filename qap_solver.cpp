@@ -127,7 +127,11 @@ int main(int argc, char* argv[]) {
                 // Optional jitter before decode to increase discrete diversity
                 if (config.jitter > 0.0) {
                     uniform_real_distribution<> jdis(-config.jitter, config.jitter);
-                    for (double& pos : wolf.position) pos += jdis(gen);
+                    for (double& pos : wolf.position) {
+                        pos += jdis(gen);
+                        // Re-clamp after jitter to maintain bounds
+                        pos = max(-1.0, min(1.0, pos));
+                    }
                 }
                 // Convert to permutation and calculate fitness
                 wolf.permutation = lvp_decode(wolf.position);
@@ -151,7 +155,7 @@ int main(int argc, char* argv[]) {
             }
             
             // Apply Tabu Search to alpha wolf (hybridization) every ts_every iterations
-            if (config.ts_every > 0 && (iteration % config.ts_every == 0)) {
+            if (config.ts_iterations > 0 && config.ts_every > 0 && (iteration % config.ts_every == 0)) {
                 apply_tabu_search(problem, alpha, config.ts_iterations, config.tabu_tenure);
             }
             // Update wolves[0] with improved alpha
@@ -284,7 +288,7 @@ void apply_tabu_search(const Problem& problem, Wolf& wolf, int ts_iterations, in
             }
         }
         
-        // If no improving move found, break
+        // If no valid move found (all moves are tabu and don't satisfy aspiration), break
         if (best_i == -1) break;
         
         // Update current solution
