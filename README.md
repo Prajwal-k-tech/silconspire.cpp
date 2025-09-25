@@ -33,6 +33,13 @@ Options:
   --help, -h            Show this help message
 ```
 
+Additional runtime flags (useful for experiments):
+
+```
+  --ts-every N          Apply Tabu Search every N iterations (default: 1)
+  --jitter D            Add small uniform noise (±D) to wolf positions before decoding (default: 0.02)
+```
+
 ### Example Usage
 ```bash
 # Quick test with smaller parameters
@@ -43,6 +50,22 @@ Options:
 
 # Custom problem instance
 ./qap_solver --input-file my_problem.txt
+```
+
+Advanced run examples (diagnostics / experiments):
+
+```
+# 1) Disable Tabu Search (pure GWO exploration):
+./qap_solver --input-file instances/meta_massive_50.txt --pack-size 300 --max-iterations 200 --ts-iterations 0 --jitter 0.02
+
+# 2) Delay Tabu Search so GWO has time to explore:
+./qap_solver --input-file instances/meta_massive_50.txt --pack-size 300 --max-iterations 2000 --ts-iterations 200 --ts-every 1000000 --jitter 0.02
+
+# 3) Increase jitter (more discrete diversity before decoding):
+./qap_solver --input-file instances/meta_massive_50.txt --pack-size 300 --max-iterations 2000 --ts-iterations 200 --tabu-tenure 80 --ts-every 50 --jitter 0.08
+
+# 4) Smaller population to slow early convergence:
+./qap_solver --input-file instances/meta_massive_50.txt --pack-size 80 --max-iterations 2000 --ts-iterations 200 --tabu-tenure 80 --ts-every 50 --jitter 0.02
 ```
 
 ## Problem Statement & Solution 🔬
@@ -92,7 +115,7 @@ Flow matrix (pods/hour):
 
 ### Verified Optimal Solution for the 4×4 Case
 
-I ran the solver and then exhaustively checked all 24 permutations to verify optimality. The solver consistently found the global optimum.
+for 4x4 case there are 24 permuations and the best one is the following 
 
 - **Optimal cost:** **17,600**
 - **Optimal permutation (facility -> bay indices):** `(0, 2, 1, 3)`
@@ -103,9 +126,9 @@ I ran the solver and then exhaustively checked all 24 permutations to verify opt
 
 This result was verified by an exhaustive search of all 24 permutations and is included in the README as the canonical default test-case result.
 
-## Algorithm Overview 🐺
+## Algorithm Overview 
 
-This tool implements a **state-of-the-art hybrid metaheuristic** combining:
+The tool implements a **state-of-the-art hybrid metaheuristic** combining:
 
 ### Grey Wolf Optimizer (GWO)
 - **Nature-inspired** global search algorithm simulating wolf pack hunting behavior
@@ -122,7 +145,7 @@ This tool implements a **state-of-the-art hybrid metaheuristic** combining:
 - After each GWO iteration, the best solution (Alpha wolf) is refined using Tabu Search
 - Achieves superior performance compared to either algorithm alone
 
-## Data Format 📊
+## Data Format:
 
 QAP instance files use the following format:
 ```
@@ -145,16 +168,14 @@ Where:
 - Second matrix = **Flow matrix** (traffic between facilities)
 
 ### Silicon Spire Instance
-The included `silicon_spire.txt` contains a 6×6 problem with:
-- **Distance matrix**: Cleanroom bay separation distances (meters)
-- **Flow matrix**: Wafer pod traffic between processing modules (pods/hour)
+The included `silicon_spire.txt` contains the canonical 4×4 Silicon Spire test instance (distance and flow matrices shown above). The matrices model distances between four cleanroom bays and wafer-pod traffic between four processing modules.
 
 ## Results & Performance 📈
 
-### Solution Quality
-✅ **OPTIMAL SOLUTION FOUND**: The tool consistently finds the proven optimal solution for the 6x6 test case.
-- **Best cost**: 41,490 (verified by exhaustive search)
-- **Optimal assignment**: As detailed in the solution section above.
+### Solution Quality (default 4×4 case)
+ **OPTIMAL SOLUTION VERIFIED**: The repository's default 4×4 test case has been exhaustively verified.
+- **Best cost:** 17,600 (exhaustive search over 24 permutations)
+- **Optimal permutation (facility -> bay indices):** `(0, 2, 1, 3)` — documented in the solution section above.
 
 ### Performance Characteristics
 - **Small problems (n ≤ 10)**: Near-optimal solutions in seconds
@@ -167,31 +188,29 @@ The included `silicon_spire.txt` contains a 6×6 problem with:
 - Robust across different parameter settings
 - Consistent results across multiple runs
 
-## Sample Output 💻
+### Sample Output 
 ```
 Loading QAP instance from: silicon_spire.txt
-Problem size: 6x6
+Problem size: 4x4
 
 Starting Grey Wolf Optimizer + Tabu Search hybrid algorithm...
 Pack size: 30, Max iterations: 100
 Tabu Search iterations: 50, Tabu tenure: 10
-Initial best cost: 42040
+Initial best cost: 17600
 
-Iteration 1: Best cost = 41490
+Iteration 1: Best cost = 17600
 ...
 
 === FINAL RESULTS ===
-Best cost found: 41490
+Best cost found: 17600
 Best assignment:
-  Photolithography Bay -> Bay Delta
+  Photolithography Bay -> Bay Alpha
   Etching & Cleaning Station -> Bay Gamma
-  Deposition Chamber -> Bay Alpha
-  Metrology & Inspection Hub -> Bay Zeta
-  Ion Implantation Unit -> Bay Beta
-  Wafer Test & Sort Area -> Bay Epsilon
+  Deposition Chamber -> Bay Beta
+  Metrology & Inspection Hub -> Bay Delta
 ```
 
-## Technical Implementation 🔧
+## Technical Implementation 
 
 ### Core Data Structures
 ```cpp
@@ -207,33 +226,3 @@ struct Wolf {
     int fitness;                     // Objective function value
 };
 ```
-
-### Key Features
-- **Robust error handling** with parameter validation
-- **Memory-efficient** STL container usage  
-- **Warning-free compilation** with strict compiler flags
-- **Cross-platform compatibility** (Linux, Windows, macOS)
-- **Professional code quality** with comprehensive testing
-
-## Project Goals 🎯
-
-This tool serves multiple purposes:
-- **Practical solver** for real-world facility layout optimization
-- **Research platform** for metaheuristic algorithm comparison
-- **Educational resource** demonstrating hybrid optimization techniques
-- **Benchmark tool** for QAP solver performance evaluation
-
-The Silicon Spire scenario provides a concrete, high-stakes application where optimization decisions directly impact multi-billion-dollar manufacturing operations.
-
----
-
-## Verification & Testing ✅
-
-The implementation has been thoroughly validated:
-- ✅ **Correctness**: Manual calculation verification of QAP cost function
-- ✅ **Optimality**: Exhaustive search confirms our solution is globally optimal for the 6x6 case
-- ✅ **Robustness**: Extensive testing across parameter ranges
-- ✅ **Reliability**: Consistent results across multiple runs
-- ✅ **Quality**: Warning-free compilation with strict compiler settings
-
-**Built for production use and research excellence.** 🏆
