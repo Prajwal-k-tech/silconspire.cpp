@@ -12,7 +12,7 @@ g++ -std=c++17 -O2 -o qap_solver qap_solver.cpp
 ./qap_solver --help
 ```
 
-An instance file contains a positive integer `n`, then an `n × n` distance matrix, followed by an `n × n` flow matrix. The solver reports an error if the size or either matrix is missing or malformed.
+An instance file contains a positive integer `n`, then an `n × n` distance matrix, followed by an `n × n` flow matrix. The solver reports an error for invalid dimensions, missing or malformed matrix values, or unexpected trailing data.
 
 The objective for an assignment `p` is:
 
