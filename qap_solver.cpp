@@ -192,21 +192,27 @@ Problem load_problem(const string& filename) {
     }
     
     int n;
-    file >> n;
+    if (!(file >> n) || n <= 0) {
+        throw runtime_error("Invalid QAP size in file: " + filename);
+    }
     
     Problem problem(n);
     
     // Read distance matrix
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            file >> problem.distance[i][j];
+            if (!(file >> problem.distance[i][j])) {
+                throw runtime_error("Invalid or incomplete distance matrix in file: " + filename);
+            }
         }
     }
     
     // Read flow matrix
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            file >> problem.flow[i][j];
+            if (!(file >> problem.flow[i][j])) {
+                throw runtime_error("Invalid or incomplete flow matrix in file: " + filename);
+            }
         }
     }
     
