@@ -5,6 +5,9 @@
 #include <sstream>
 #include <algorithm>
 #include <random>
+#include <optional>
+#include <cstdint>
+#include <charconv>
 #include <numeric>
 #include <deque>
 #include <climits>
@@ -40,6 +43,7 @@ struct Config {
     // additional controls
     int ts_every = 1; // apply Tabu Search every K iterations (1 = every iteration)
     double jitter = 0.0; // add small uniform noise in [-jitter, jitter] before LVP decode
+    optional<uint64_t> seed;
 };
 
 // Function declarations
@@ -60,9 +64,16 @@ int main(int argc, char* argv[]) {
     cout << "Loading QAP instance from: " << config.input_file << endl;
     Problem problem = load_problem(config.input_file);
     cout << "Problem size: " << problem.n << "x" << problem.n << endl;
-    // Initialize random number generator
-    random_device rd;
-    mt19937 gen(rd());
+    // Use the requested seed or create one and print it so the run can be repeated.
+    uint64_t seed;
+    if (config.seed) {
+        seed = *config.seed;
+    } else {
+        random_device rd;
+        seed = (static_cast<uint64_t>(rd()) << 32) ^ static_cast<uint64_t>(rd());
+    }
+    mt19937_64 gen(seed);
+    cout << "Random seed: " << seed << endl;
     uniform_real_distribution<> dis(-1.0, 1.0);
     // Initialize wolf pack
     vector<Wolf> wolves(config.pack_size, Wolf(problem.n)); //initalize pack of wolves
@@ -385,6 +396,14 @@ Config parse_arguments(int argc, char* argv[]) {
             if (config.jitter < 0.0) {
                 throw invalid_argument("jitter must be >= 0");
             }
+        } else if (arg == "--seed" && i + 1 < argc) {
+            const string value = argv[++i];
+            uint64_t seed = 0;
+            const auto result = from_chars(value.data(), value.data() + value.size(), seed);
+            if (value.empty() || result.ec != errc{} || result.ptr != value.data() + value.size()) {
+                throw invalid_argument("seed must be an unsigned 64-bit integer");
+            }
+            config.seed = seed;
         } else {
             cerr << "Unknown argument: " << arg << endl;
             print_usage();
@@ -406,5 +425,6 @@ void print_usage() { //implementation of the function that prints usage options
     cout << "  --tabu-tenure N       Tabu list size (default: 10)\n";
     cout << "  --ts-every K          Apply Tabu Search every K iterations (default: 1)\n";
     cout << "  --jitter x            Add uniform jitter in [-x,x] before decoding (default: 0.0)\n";
+    cout << "  --seed N              Set the random seed (default: generated and printed)\n";
     cout << "  --help, -h            Show this help message\n";
 }

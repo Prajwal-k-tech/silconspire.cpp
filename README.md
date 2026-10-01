@@ -9,6 +9,7 @@ This repository contains a small illustrative instance. The cleanroom names in t
 ```sh
 g++ -std=c++17 -O2 -o qap_solver qap_solver.cpp
 ./qap_solver --input-file silicon_spire.txt
+./qap_solver --input-file silicon_spire.txt --seed 42
 ./qap_solver --help
 ```
 
@@ -31,6 +32,7 @@ sum(i = 0..n-1) sum(j = 0..n-1) flow[i][j] * distance[p[i]][p[j]]
 | `--tabu-tenure N` | `10` | Tabu-list length |
 | `--ts-every N` | `1` | Run Tabu Search on the current best every N GWO iterations |
 | `--jitter VALUE` | `0.0` | Uniform perturbation before permutation decoding |
+| `--seed N` | generated | Unsigned 64-bit random seed; the selected seed is printed for repeat runs |
 
 GWO work is approximately `O(iterations × pack_size × n)`. Each Tabu iteration considers `O(n²)` swaps and recomputes each candidate objective in `O(n²)`, giving `O(Tabu iterations × n⁴)` per Tabu invocation. Runtime depends on the chosen parameters and instance.
 
@@ -38,7 +40,7 @@ GWO work is approximately `O(iterations × pack_size × n)`. Each Tabu iteration
 
 - GWO and Tabu Search are randomized heuristics. They do not guarantee an optimal assignment.
 - The best assignment is retained across generations. After Tabu Search changes it, the solver re-encodes its continuous position before the next GWO iteration.
-- There is no random-seed option, so a run is not exactly reproducible.
+- Pass `--seed N` to repeat a run with the same build and input on the same platform. Without it, the solver generates and prints a seed that can be reused.
 - The bundled 4 × 4 instance is suitable for a small demonstration, not for drawing conclusions about larger QAPs.
 - No comparison against exact solvers, benchmark suites, or industrial data is included.
 
