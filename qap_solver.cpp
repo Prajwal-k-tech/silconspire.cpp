@@ -215,7 +215,12 @@ Problem load_problem(const string& filename) {
             }
         }
     }
-    
+
+    string trailing_data;
+    if (file >> trailing_data) {
+        throw runtime_error("Unexpected trailing data in file: " + filename);
+    }
+
     file.close();
     return problem;
 }
