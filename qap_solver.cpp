@@ -46,10 +46,12 @@ struct Config {
 Problem load_problem(const string& filename); //function to load the problem from a file
 long long calculate_cost(const Problem& problem, const vector<int>& permutation); //function to calculate the cost of a given permutation
 vector<int> lvp_decode(const vector<double>& position); //do the lvp decode, returns a permutation 
+vector<double> lvp_encode(const vector<int>& permutation); //encode an assignment so LVP decoding recovers it
 void apply_tabu_search(const Problem& problem, Wolf& wolf, int ts_iterations, int tabu_tenure); //apply tabu search to a wolf
 Config parse_arguments(int argc, char* argv[]); //parse command line arguments
 void print_usage();
 
+#ifndef SILICON_SPIRE_NO_MAIN
 int main(int argc, char* argv[]) {
     try {
         // Parse command line arguments
@@ -184,6 +186,7 @@ int main(int argc, char* argv[]) {
     
     return 0;
 }
+#endif
 
 Problem load_problem(const string& filename) {
     ifstream file(filename);
@@ -251,6 +254,19 @@ vector<int> lvp_decode(const vector<double>& position) {
     }
 
     return permutation;
+}
+
+vector<double> lvp_encode(const vector<int>& permutation) {
+    const int n = static_cast<int>(permutation.size());
+    vector<double> position(n, 0.0);
+    if (n < 2) {
+        return position;
+    }
+
+    for (int facility = 0; facility < n; facility++) {
+        position[facility] = 1.0 - 2.0 * permutation[facility] / (n - 1);
+    }
+    return position;
 }
 
 void apply_tabu_search(const Problem& problem, Wolf& wolf, int ts_iterations, int tabu_tenure) {
@@ -325,6 +341,7 @@ void apply_tabu_search(const Problem& problem, Wolf& wolf, int ts_iterations, in
     // Update wolf with best solution found
     wolf.permutation = best_solution;
     wolf.fitness = best_cost;
+    wolf.position = lvp_encode(best_solution);
 }
 
 Config parse_arguments(int argc, char* argv[]) {

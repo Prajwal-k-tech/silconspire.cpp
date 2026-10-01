@@ -14,6 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Compile with warnings enabled
         run: g++ -std=c++17 -Wall -Wextra -Wpedantic -O2 qap_solver.cpp -o qap_solver
+      - name: Check permutation position round trips
+        run: g++ -std=c++17 -Wall -Wextra -Wpedantic -O2 tests/encoding_roundtrip.cpp -o encoding_roundtrip && ./encoding_roundtrip
       - name: Run bundled instance
         run: ./qap_solver --input-file silicon_spire.txt --pack-size 3 --max-iterations 1 --ts-iterations 0
       - name: Reject malformed and trailing input

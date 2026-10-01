@@ -37,6 +37,7 @@ GWO work is approximately `O(iterations × pack_size × n)`. Each Tabu iteration
 ## Scope and limitations
 
 - GWO and Tabu Search are randomized heuristics. They do not guarantee an optimal assignment.
+- The best assignment is retained across generations. After Tabu Search changes it, the solver re-encodes its continuous position before the next GWO iteration.
 - There is no random-seed option, so a run is not exactly reproducible.
 - The bundled 4 × 4 instance is suitable for a small demonstration, not for drawing conclusions about larger QAPs.
 - No comparison against exact solvers, benchmark suites, or industrial data is included.
