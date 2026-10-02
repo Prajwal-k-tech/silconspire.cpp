@@ -1,0 +1,41 @@
+name: C++ CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile with warnings enabled
+        run: g++ -std=c++17 -Wall -Wextra -Wpedantic -O2 qap_solver.cpp -o qap_solver
+      - name: Check permutation position round trips
+        run: g++ -std=c++17 -Wall -Wextra -Wpedantic -O2 tests/encoding_roundtrip.cpp -o encoding_roundtrip && ./encoding_roundtrip
+      - name: Run bundled instance
+        run: ./qap_solver --input-file silicon_spire.txt --pack-size 3 --max-iterations 1 --ts-iterations 0
+      - name: Reject malformed and trailing input
+        shell: bash
+        run: |
+          printf '2\n1 2\n3 4\n5 6\n7\n' > "$RUNNER_TEMP/incomplete.txt"
+          if ./qap_solver --input-file "$RUNNER_TEMP/incomplete.txt" --pack-size 3 --max-iterations 1 --ts-iterations 0; then
+            echo 'Incomplete input was accepted' >&2
+            exit 1
+          fi
+          printf '2\n1 2\n3 4\n5 6\n7 8\n999\n' > "$RUNNER_TEMP/trailing.txt"
+          if ./qap_solver --input-file "$RUNNER_TEMP/trailing.txt" --pack-size 3 --max-iterations 1 --ts-iterations 0; then
+            echo 'Trailing input was accepted' >&2
+            exit 1
+          fi
+      - name: Reject overflowing QAP objective
+        shell: bash
+        run: |
+          printf '2\n2147483647 2147483647\n2147483647 2147483647\n2147483647 2147483647\n2147483647 2147483647\n' > "$RUNNER_TEMP/overflowing.txt"
+          if ./qap_solver --input-file "$RUNNER_TEMP/overflowing.txt" --pack-size 3 --max-iterations 1 --ts-iterations 0; then
+            echo 'Overflowing objective was accepted' >&2
+            exit 1
+          fi

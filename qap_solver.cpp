@@ -5,10 +5,14 @@
 #include <sstream>
 #include <algorithm>
 #include <random>
+#include <optional>
+#include <cstdint>
+#include <charconv>
 #include <numeric>
 #include <deque>
 #include <climits>
 #include <cmath>
+#include <stdexcept>
 using namespace std;
 
 struct Problem {
@@ -40,16 +44,19 @@ struct Config {
     // additional controls
     int ts_every = 1; // apply Tabu Search every K iterations (1 = every iteration)
     double jitter = 0.0; // add small uniform noise in [-jitter, jitter] before LVP decode
+    optional<uint64_t> seed;
 };
 
 // Function declarations
 Problem load_problem(const string& filename); //function to load the problem from a file
 long long calculate_cost(const Problem& problem, const vector<int>& permutation); //function to calculate the cost of a given permutation
 vector<int> lvp_decode(const vector<double>& position); //do the lvp decode, returns a permutation 
+vector<double> lvp_encode(const vector<int>& permutation); //encode an assignment so LVP decoding recovers it
 void apply_tabu_search(const Problem& problem, Wolf& wolf, int ts_iterations, int tabu_tenure); //apply tabu search to a wolf
 Config parse_arguments(int argc, char* argv[]); //parse command line arguments
 void print_usage();
 
+#ifndef SILICON_SPIRE_NO_MAIN
 int main(int argc, char* argv[]) {
     try {
         // Parse command line arguments
@@ -58,9 +65,16 @@ int main(int argc, char* argv[]) {
     cout << "Loading QAP instance from: " << config.input_file << endl;
     Problem problem = load_problem(config.input_file);
     cout << "Problem size: " << problem.n << "x" << problem.n << endl;
-    // Initialize random number generator
-    random_device rd;
-    mt19937 gen(rd());
+    // Use the requested seed or create one and print it so the run can be repeated.
+    uint64_t seed;
+    if (config.seed) {
+        seed = *config.seed;
+    } else {
+        random_device rd;
+        seed = (static_cast<uint64_t>(rd()) << 32) ^ static_cast<uint64_t>(rd());
+    }
+    mt19937_64 gen(seed);
+    cout << "Random seed: " << seed << endl;
     uniform_real_distribution<> dis(-1.0, 1.0);
     // Initialize wolf pack
     vector<Wolf> wolves(config.pack_size, Wolf(problem.n)); //initalize pack of wolves
@@ -184,6 +198,7 @@ int main(int argc, char* argv[]) {
     
     return 0;
 }
+#endif
 
 Problem load_problem(const string& filename) {
     ifstream file(filename);
@@ -192,34 +207,71 @@ Problem load_problem(const string& filename) {
     }
     
     int n;
-    file >> n;
+    if (!(file >> n) || n <= 0) {
+        throw runtime_error("Invalid QAP size in file: " + filename);
+    }
     
     Problem problem(n);
     
     // Read distance matrix
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            file >> problem.distance[i][j];
+            if (!(file >> problem.distance[i][j])) {
+                throw runtime_error("Invalid or incomplete distance matrix in file: " + filename);
+            }
         }
     }
     
     // Read flow matrix
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            file >> problem.flow[i][j];
+            if (!(file >> problem.flow[i][j])) {
+                throw runtime_error("Invalid or incomplete flow matrix in file: " + filename);
+            }
         }
     }
-    
+
+    string trailing_data;
+    if (file >> trailing_data) {
+        throw runtime_error("Unexpected trailing data in file: " + filename);
+    }
+
     file.close();
     return problem;
 }
 
 long long calculate_cost(const Problem& problem, const vector<int>& permutation) {
+    if (permutation.size() != static_cast<size_t>(problem.n)) {
+        throw invalid_argument("Assignment size must match the problem size");
+    }
+
+    vector<bool> assigned(static_cast<size_t>(problem.n), false);
+    for (const int location : permutation) {
+        if (location < 0 || location >= problem.n) {
+            throw invalid_argument("Assignment contains an out-of-range location");
+        }
+        if (assigned[static_cast<size_t>(location)]) {
+            throw invalid_argument("Assignment must be a permutation");
+        }
+        assigned[static_cast<size_t>(location)] = true;
+    }
+
     long long cost = 0;
     for (int i = 0; i < problem.n; i++) {
         for (int j = 0; j < problem.n; j++) {
-            cost += static_cast<long long>(problem.flow[i][j]) * static_cast<long long>(problem.distance[permutation[i]][permutation[j]]);
+            const long long term = static_cast<long long>(problem.flow[i][j]) *
+                static_cast<long long>(problem.distance[permutation[i]][permutation[j]]);
+            if ((term > 0 && cost > LLONG_MAX - term) ||
+                (term < 0 && cost < LLONG_MIN - term)) {
+                throw overflow_error("QAP objective exceeds the supported signed 64-bit range");
+            }
+            cost += term;
         }
+    }
+
+    // LLONG_MAX is also used internally as the "no candidate yet" sentinel.
+    if (cost == LLONG_MAX) {
+        throw overflow_error("QAP objective equals the reserved signed 64-bit sentinel");
     }
     return cost;
 }
@@ -240,6 +292,19 @@ vector<int> lvp_decode(const vector<double>& position) {
     }
 
     return permutation;
+}
+
+vector<double> lvp_encode(const vector<int>& permutation) {
+    const int n = static_cast<int>(permutation.size());
+    vector<double> position(n, 0.0);
+    if (n < 2) {
+        return position;
+    }
+
+    for (int facility = 0; facility < n; facility++) {
+        position[facility] = 1.0 - 2.0 * permutation[facility] / (n - 1);
+    }
+    return position;
 }
 
 void apply_tabu_search(const Problem& problem, Wolf& wolf, int ts_iterations, int tabu_tenure) {
@@ -314,6 +379,7 @@ void apply_tabu_search(const Problem& problem, Wolf& wolf, int ts_iterations, in
     // Update wolf with best solution found
     wolf.permutation = best_solution;
     wolf.fitness = best_cost;
+    wolf.position = lvp_encode(best_solution);
 }
 
 Config parse_arguments(int argc, char* argv[]) {
@@ -357,6 +423,14 @@ Config parse_arguments(int argc, char* argv[]) {
             if (config.jitter < 0.0) {
                 throw invalid_argument("jitter must be >= 0");
             }
+        } else if (arg == "--seed" && i + 1 < argc) {
+            const string value = argv[++i];
+            uint64_t seed = 0;
+            const auto result = from_chars(value.data(), value.data() + value.size(), seed);
+            if (value.empty() || result.ec != errc{} || result.ptr != value.data() + value.size()) {
+                throw invalid_argument("seed must be an unsigned 64-bit integer");
+            }
+            config.seed = seed;
         } else {
             cerr << "Unknown argument: " << arg << endl;
             print_usage();
@@ -378,5 +452,6 @@ void print_usage() { //implementation of the function that prints usage options
     cout << "  --tabu-tenure N       Tabu list size (default: 10)\n";
     cout << "  --ts-every K          Apply Tabu Search every K iterations (default: 1)\n";
     cout << "  --jitter x            Add uniform jitter in [-x,x] before decoding (default: 0.0)\n";
+    cout << "  --seed N              Set the random seed (default: generated and printed)\n";
     cout << "  --help, -h            Show this help message\n";
 }
