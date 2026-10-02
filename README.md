@@ -15,6 +15,8 @@ g++ -std=c++17 -O2 -o qap_solver qap_solver.cpp
 
 An instance file contains a positive integer `n`, then an `n × n` distance matrix, followed by an `n × n` flow matrix. The solver reports an error for invalid dimensions, missing or malformed matrix values, or unexpected trailing data.
 
+Assignments must be permutations of `0..n-1`. The objective is accumulated in signed 64-bit arithmetic; invalid assignments and costs outside the supported range are reported as errors.
+
 The objective for an assignment `p` is:
 
 ```text

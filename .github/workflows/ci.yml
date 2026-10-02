@@ -31,3 +31,11 @@ jobs:
             echo 'Trailing input was accepted' >&2
             exit 1
           fi
+      - name: Reject overflowing QAP objective
+        shell: bash
+        run: |
+          printf '2\n2147483647 2147483647\n2147483647 2147483647\n2147483647 2147483647\n2147483647 2147483647\n' > "$RUNNER_TEMP/overflowing.txt"
+          if ./qap_solver --input-file "$RUNNER_TEMP/overflowing.txt" --pack-size 3 --max-iterations 1 --ts-iterations 0; then
+            echo 'Overflowing objective was accepted' >&2
+            exit 1
+          fi

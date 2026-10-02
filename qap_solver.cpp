@@ -12,6 +12,7 @@
 #include <deque>
 #include <climits>
 #include <cmath>
+#include <stdexcept>
 using namespace std;
 
 struct Problem {
@@ -240,11 +241,37 @@ Problem load_problem(const string& filename) {
 }
 
 long long calculate_cost(const Problem& problem, const vector<int>& permutation) {
+    if (permutation.size() != static_cast<size_t>(problem.n)) {
+        throw invalid_argument("Assignment size must match the problem size");
+    }
+
+    vector<bool> assigned(static_cast<size_t>(problem.n), false);
+    for (const int location : permutation) {
+        if (location < 0 || location >= problem.n) {
+            throw invalid_argument("Assignment contains an out-of-range location");
+        }
+        if (assigned[static_cast<size_t>(location)]) {
+            throw invalid_argument("Assignment must be a permutation");
+        }
+        assigned[static_cast<size_t>(location)] = true;
+    }
+
     long long cost = 0;
     for (int i = 0; i < problem.n; i++) {
         for (int j = 0; j < problem.n; j++) {
-            cost += static_cast<long long>(problem.flow[i][j]) * static_cast<long long>(problem.distance[permutation[i]][permutation[j]]);
+            const long long term = static_cast<long long>(problem.flow[i][j]) *
+                static_cast<long long>(problem.distance[permutation[i]][permutation[j]]);
+            if ((term > 0 && cost > LLONG_MAX - term) ||
+                (term < 0 && cost < LLONG_MIN - term)) {
+                throw overflow_error("QAP objective exceeds the supported signed 64-bit range");
+            }
+            cost += term;
         }
+    }
+
+    // LLONG_MAX is also used internally as the "no candidate yet" sentinel.
+    if (cost == LLONG_MAX) {
+        throw overflow_error("QAP objective equals the reserved signed 64-bit sentinel");
     }
     return cost;
 }
